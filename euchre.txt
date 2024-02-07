@@ -1,0 +1,300 @@
+// Project UID 1d9f47bfc76643019cfbf037641defe1
+
+#include <iostream>
+#include <algorithm>
+#include <array>
+#include <vector>
+#include <string>
+#include <fstream>
+
+#include "Card.h"
+#include "Pack.h"
+#include "Player.h"
+
+
+using namespace std;
+
+const int TRICK_CARD_SIZE = 4;
+
+class Full_Game {
+private:
+ Pack pack;
+ vector<Player *> table;
+ int hand = 0;
+ int dealer_index = 0;
+ Card upcard;
+ Card led_card;
+ Suit trump_suit = upcard.get_suit();
+ string trump_card = "";
+ int players_1_and_3_points = 0;
+ int players_0_and_2_points = 0;
+ bool trump = false;
+ int current_player_index = 0;
+ vector<Card> trick_card;
+ int trump_maker_number = 0, player_0_or_2_winning_trick = 0, player_1_or_3_winning_trick = 0;
+ int return_hand_helper = 0;
+
+public:
+
+    int find_trick_max(vector<Card> trick_card, const Suit &trump, const Card &led_card, vector<int> order) {
+     Card max_card = trick_card[0];
+     int max_index = 0;
+    
+     for (int i = 1; i < TRICK_CARD_SIZE; ++i) {
+         if (Card_less(max_card, trick_card[i], led_card, trump)) {
+            max_card = trick_card[i];
+            max_index = i;
+        }
+     }
+
+     int x = order[max_index];
+    
+     return x;
+   }
+    
+    void read_in_pack_input(string file_name) {
+     ifstream pack_in;
+     pack_in.open(file_name);
+     
+     if (!pack_in.is_open()) {
+       cout << "Error opening " << file_name << endl;
+    }
+     pack = Pack(pack_in);
+  }
+
+    void create_table(string player1_name, string player1_type, string player2_name, string player2_type, string player3_name, string player3_type, string player4_name, string player4_type) {
+    Player *player1 = Player_factory(player1_name, player1_type);
+    table.push_back(player1);
+
+    Player *player2 = Player_factory(player2_name, player2_type);
+    table.push_back(player2);
+
+    Player *player3 = Player_factory(player3_name, player3_type);
+    table.push_back(player3);
+
+    Player *player4 = Player_factory(player4_name, player4_type);
+    table.push_back(player4);
+  }
+
+    void shuffle_the_pack(string shuffle) {
+    if(shuffle == "shuffle") {
+        pack.shuffle();
+    } else {
+        pack.reset();
+    }
+  }
+
+    void Deal() {
+        dealer_index = hand % 4;
+        
+        table[(dealer_index + 1) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 1) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 1) % 4]->add_card(pack.deal_one());
+        
+        table[(dealer_index + 2) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 2) % 4]->add_card(pack.deal_one());
+        
+        table[(dealer_index + 3) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 3) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 3) % 4]->add_card(pack.deal_one());
+        
+        table[(dealer_index + 4) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 4) % 4]->add_card(pack.deal_one());
+        
+        table[(dealer_index + 1) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 1) % 4]->add_card(pack.deal_one());
+        
+        table[(dealer_index + 2) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 2) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 2) % 4]->add_card(pack.deal_one());
+        
+        table[(dealer_index + 3) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 3) % 4]->add_card(pack.deal_one());
+        
+        table[(dealer_index + 4) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 4) % 4]->add_card(pack.deal_one());
+        table[(dealer_index + 4) % 4]->add_card(pack.deal_one());
+        
+        upcard = pack.deal_one();
+        cout << upcard << " turned up" << endl;
+    }
+
+    Player* find_dealer() {
+        dealer_index = hand % 4;
+        return table[dealer_index];
+    }
+
+    int return_hand() {
+        hand = return_hand_helper;
+        ++return_hand_helper;
+        dealer_index = hand % 4;
+        return hand;
+    }
+
+    void winning_message(int points_to_win) {
+        if(players_0_and_2_points >= points_to_win) {
+            cout << *table[0] << " and " << *table[2] << " win!" << endl;
+        } else {
+            cout << *table[1] << " and " << *table[3] << " win!" << endl;
+        }
+    }
+
+    int get_players_0_and_2_points() const {
+        return players_0_and_2_points;
+    }
+
+    int get_players_1_and_3_points() const {
+        return players_1_and_3_points;
+    }
+
+    void make_trump() {
+        trump = false;
+        dealer_index = hand % 4;
+        int round;
+
+
+        for(int i = 1; i < 9; ++i) {
+            if(i < 5) {
+                round = 1;
+            } else {
+                round = 2;
+            }
+
+            if(table[(dealer_index + i) % 4]->make_trump(upcard, i % 4 == dealer_index, round, trump_suit)) {
+                if(round == 1) {
+                  cout << table[(dealer_index + i) % 4]->get_name() << " orders up " << trump_suit << endl << endl;
+                  trump_maker_number = dealer_index + i % 4;
+                  table[dealer_index]->add_and_discard(upcard);
+                  break;
+                } else if(round == 2) {
+                    cout << table[(dealer_index + i) % 4]->get_name() << " orders up " << trump_suit << endl << endl;
+                    trump_maker_number = dealer_index + i % 4;
+                    break;
+                }
+            } else {
+                cout << table[(dealer_index + i) % 4]->get_name() << " passes" << endl;
+            }
+        }
+    }
+
+    void play() {
+        vector<int> order;
+        current_player_index = (dealer_index + 1) % 4;
+
+        for(int j = 0; j < 5; ++j) {
+            order.clear();
+            trick_card.clear();
+            led_card = table[current_player_index]->lead_card(trump_suit);
+            trick_card.push_back(led_card);
+            cout << led_card << " led by " << table[current_player_index]->get_name() << endl;
+            order.push_back(current_player_index);
+
+            /*vector<Card> hand_of_cards = table[0]->get_hand();
+            for(int u = 0; u < hand_of_cards.size(); ++u) {
+                cout << hand_of_cards[u] << endl;
+            }*/
+
+          for(int i = 1; i < 4; ++i) {
+            if(((current_player_index + i) % 4) == 3) {
+                Card test_card = table[3]->play_card(led_card, trump_suit);
+                cout << test_card << " played by " << *table[3] << endl;
+                trick_card.push_back(test_card);
+                order.push_back(3);
+            } else if(((current_player_index + i) % 4) == 2) {
+                Card test_card = table[2]->play_card(led_card, trump_suit);
+                cout << test_card << " played by " << *table[2] << endl;
+                trick_card.push_back(test_card);
+                order.push_back(2);
+            } else if(((current_player_index + i) % 4) == 1) {
+                Card test_card = table[1]->play_card(led_card, trump_suit);
+                cout << test_card << " played by " << *table[1] << endl;
+                trick_card.push_back(test_card);
+                order.push_back(1);
+            } else if(((current_player_index + i) % 4) == 0) {
+                Card test_card = table[0]->play_card(led_card, trump_suit);
+                cout << test_card << " played by " << *table[0] << endl;
+                trick_card.push_back(test_card);
+                order.push_back(0);
+            }
+          }
+
+          current_player_index = find_trick_max(trick_card, trump_suit, led_card, order);
+          cout << *table[current_player_index] << " takes the trick" << endl << endl;
+
+          if(current_player_index % 2 == 0) {
+              ++player_0_or_2_winning_trick;
+          } else {
+              ++player_1_or_3_winning_trick;
+          }
+        }
+    }
+
+    void find_trick_winner() {
+        if (player_0_or_2_winning_trick >= 3) {
+            cout << *table[0] << " and " << *table[2] << " win the hand" << endl;
+            if (trump_maker_number % 2 == 0) {
+                if (player_0_or_2_winning_trick == 5) {
+                    players_0_and_2_points += 2;
+                    cout << "march!" << endl;
+                }
+                else {
+                    players_0_and_2_points++;
+                }
+            }
+            else {
+                players_0_and_2_points+= 2;
+                cout << "euchred!" << endl;
+            }
+        }
+        else {
+            cout << *table[1] << " and " << *table[3] << " win the hand" << endl;
+            if (trump_maker_number % 2 == 1) {
+                if (player_1_or_3_winning_trick == 5) {
+                    players_1_and_3_points += 2;
+                    cout << "march!" << endl;
+                }
+                else {
+                    players_1_and_3_points ++;
+                }
+            }
+            else {
+                players_1_and_3_points += 2;
+                cout << "euchred!" << endl;
+            }
+        }
+        
+        player_1_or_3_winning_trick = 0;
+        player_0_or_2_winning_trick = 0;
+        trump = "";
+        cout << *table[0] << " and " << *table[2] << " have " << players_0_and_2_points << " points" << endl;
+        cout << *table[1] << " and " << *table[3] << " have " << players_1_and_3_points << " points" << endl << endl;
+    }
+
+};
+
+int main(int argc, char* argv[]) {
+    Full_Game game;
+    
+    int points_needed_to_win = atoi(argv[3]);
+    game.read_in_pack_input(argv[1]);
+    
+    game.create_table(argv[4], argv[5], argv[6], argv[7], argv[8], argv[9], argv[10], argv[11]);
+    
+    
+    for (int i = 0; i < argc; ++i) {
+        cout << argv[i] << " ";
+    }
+    cout << endl;
+    
+    while (!((game.get_players_0_and_2_points() >= points_needed_to_win) || (game.get_players_1_and_3_points() >= points_needed_to_win))) {
+        cout << "Hand " << game.return_hand() << endl;
+        game.shuffle_the_pack(argv[2]);
+        cout << *game.find_dealer() << " deals" << endl;
+        game.Deal();
+        game.make_trump();
+        game.play();
+        game.find_trick_winner();
+    }
+    
+    game.winning_message(points_needed_to_win);
+}
