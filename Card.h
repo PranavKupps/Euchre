@@ -1,34 +1,9 @@
 #ifndef CARD_H
 #define CARD_H
-/* Card.h
- *
- * Represents a single playing card
- * Project UID 1d9f47bfc76643019cfbf037641defe1
- *
- * by Andrew DeOrio
- * awdeorio@umich.edu
- * 2014-12-21
- */
-
 #include <iostream>
 #include <cassert>
 #include <string>
 
-// Represent a Card's Rank.
-// Rank is a type that can represent the specific values
-// listed in the definition below, but no others. (In memory
-// the Rank values are represented as integers from 0 to 12.)
-// Use the values as constants with :: (scope resolution operator):
-//   Rank r1 = FOUR;
-//   Rank r2 = NINE;
-// Ranks may be compared (this compares the underlying int values):
-//   if (r1 < r2) { // this condition is true
-// Overloaded << and >> operators are also defined farther below to
-// enable stream input/output for Rank objects:
-//   cout << r1 << endl; // prints "Four"
-//   cin >> r2 << endl;  // reads a string from cin and updates r2
-// Because the underlying representation of the enum is an integer,
-// objects of type Rank are ok to pass/return by value.
 enum Rank {
   TWO     = 0,
   THREE   = 1,
